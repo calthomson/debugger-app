@@ -12,14 +12,14 @@
     "start": "npm run build && node src/server/index.js",
     "client": "webpack-dev-server --mode development --devtool inline-source-map --hot",
     "server": "nodemon src/server/index.js",
-    "dev": "concurrently 'npm run server' 'npm run client'"
+    "dev": "concurrently 'docker-compose up > docker.log 2>&1' 'npm run server' 'npm run client'"
   },
   "author": "Caledonia Thomson",
   "license": "ISC",
   "dependencies": {
-    "express": "^4.16.3",
     "react": "^16.5.2",
     "react-dom": "^16.5.2",
+    "redis": "^2.8.0"
   },
   "devDependencies": {
     "@babel/core": "^7.0.0",
