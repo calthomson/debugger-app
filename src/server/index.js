@@ -8,27 +8,23 @@ const app = express();
 const server = http.createServer(app);
 const io = socketIo(server);
 
-// For now, place new messages on a stack
-const messageStack = [];
-
-// When a new event arrives from Redis via the events channel, add it to the messages stack
-subscriber.on('message', (channel, message) => {
-  messageStack.unshift({ message });
-});
-
-// Subscribe to the redis events channel
+// Subscribe to redis events channel
 subscriber.subscribe('events', (error) => {
   if (error) throw new Error(error);
   console.log('Subscribed to the events channel');
 });
 
-// When the client connect to the events socket, start emitting the messageStack over the socket
+// When a new message comes in, emit it to the client
+const stream = (client) => {
+  subscriber.on('message', (channel, message) => {
+    client.emit('newEvent', message);
+  });
+};
+
+// When the client connects and subscribes, begin streaming
 io.on('connection', (client) => {
-  client.on('subscribeToEvents', (interval) => {
-    console.log('client is subscribing to events with interval ', interval);
-    setInterval(() => {
-      client.emit('socketEvents', messageStack);
-    }, interval);
+  client.on('subscribeToEvents', () => {
+    stream(client);
   });
 });
 
