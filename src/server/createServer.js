@@ -7,18 +7,20 @@ const createServer = (redisClient, port) => {
   const httpServer = http.createServer(app);
   const io = socketIo(httpServer);
 
-  // When the client connects and subscribes, begin streaming
   io.on('connection', (client) => {
-    client.on('subscribeToEvents', () => {
-      // When a new message comes in, emit it to the client
-      redisClient.on('message', (channel, message) => {
-        client.emit('newEvent', message);
-      });
-
-      // Subscribe to redis events channel
+    // When a new message is received from Redis, emit it to the client
+    redisClient.on('message', (channel, message) => {
+      client.emit('newEvent', message);
+    });
+    // When a client subscribes, server subscribes to Redis channel
+    client.on('subscribe', () => {
       redisClient.subscribe('events', (error) => {
         if (error) throw new Error(error);
       });
+    });
+    // When a client unsubscribes, server unsubscribes from Redis channel
+    client.on('unsubscribe', () => {
+      redisClient.unsubscribe();
     });
   });
 

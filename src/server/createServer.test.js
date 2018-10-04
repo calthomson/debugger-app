@@ -48,7 +48,7 @@ describe('createServer', () => {
   });
 
   test('subscribes to a Redis channel and propagates messages from this channel to a client via a socket', (done) => {
-    socket.emit('subscribeToEvents');
+    socket.emit('subscribe');
 
     socket.once('newEvent', (message) => {
       expect(message).toBe('Mock event');
