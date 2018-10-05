@@ -1,13 +1,16 @@
 import React, { Component } from 'react';
 import {
-  Button,
+  SearchInput,
+  SegmentedControl,
   Table,
   TableBody,
+  TableHead,
   TableRow,
   TextTableCell,
 } from 'evergreen-ui';
 
 import { subscribe, pause, resume } from '../../socket/eventStream';
+import PageControllers from '../PageControllers';
 
 const cache = [];
 const pageSize = 20;
@@ -20,7 +23,7 @@ const renderEventRow = event => (
 
 export default class EventsTable extends Component {
   state = {
-    events: [], pageCount: 0, currPage: 0, paused: false
+    events: [], pageCount: 0, page: 0, stream: 'live', filter: ''
   };
 
   componentDidMount() {
@@ -29,46 +32,57 @@ export default class EventsTable extends Component {
     });
 
     setInterval(() => {
-      this.setState({ events: cache, pageCount: Math.floor(cache.length / pageSize) });
+      const { filter, pageCount, page } = this.state;
+      const events = filter === '' ? cache : cache.filter(event => event.includes(filter));
+      const newPageCount = Math.floor(events.length / pageSize);
+      this.setState({
+        events,
+        pageCount: newPageCount,
+        // If the page count goes down (eg. when a filter is applied) set the current page to 0
+        page: newPageCount < pageCount ? 0 : page,
+      });
     }, 16);
   }
 
-  renderPageControls() {
-    const pageControls = [];
-    const { currPage, pageCount } = this.state;
-
-    for (let i = 0; i <= pageCount; i += 1) {
-      pageControls.push(
-        <Button
-          key={i}
-          onClick={() => this.setState({ currPage: i })}
-          isActive={currPage === i}
-        >
-          {i}
-        </Button>
-      );
-    }
-
-    return pageControls;
-  }
-
   render() {
-    const { events, currPage, paused } = this.state;
-    const pageStart = currPage * pageSize;
+    const {
+      page, events, pageCount, stream
+    } = this.state;
+    const pageStart = page * pageSize;
     const pageEnd = pageStart + pageSize;
 
     return (
       <div>
-        {paused
-          ? <Button onClick={() => { resume(); this.setState({ paused: false }); }}>Resume</Button>
-          : <Button onClick={() => { pause(); this.setState({ paused: true }); }}>Pause</Button>
-        }
-        <Table>
+        <Table style={{ marginBottom: 5 }}>
+          <TableHead style={{ padding: 16 }}>
+            <SegmentedControl
+              width={160}
+              options={[{ label: 'Live', value: 'live' }, { label: 'Pause', value: 'pause' }]}
+              value={stream}
+              onChange={(value) => { this.setState({ stream: value }); if (value === 'pause') pause(); else resume(); }}
+              style={{ marginRight: 16, height: 40 }}
+            />
+            <SearchInput
+              placeholder="Type to search..."
+              onChange={(event) => { this.setState({ filter: event.target.value }); }}
+              height={40}
+              width="100%"
+            />
+          </TableHead>
           <TableBody>
             {events.slice(pageStart, pageEnd).map(renderEventRow)}
           </TableBody>
         </Table>
-        {this.renderPageControls()}
+        <PageControllers
+          page={page}
+          jumpToPage={(e) => {
+            const val = parseInt(e.target.value, 10) || 0; // Check that input is valid number
+            this.setState({ page: val < 0 || val > pageCount ? page : val }); // Check range
+          }}
+          last={() => { this.setState({ page: page - 1 }); }}
+          next={() => { this.setState({ page: page + 1 }); }}
+          pageCount={pageCount}
+        />
       </div>
     );
   }
