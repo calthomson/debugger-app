@@ -1,20 +1,32 @@
 import socketIOClient from 'socket.io-client';
 
-const socket = socketIOClient('http://localhost:8000/');
+let socket;
 
-export const subscribe = (callback) => {
+export const connect = (callback, socketUrl) => {
+  socket = socketIOClient(socketUrl);
+
+  socket.on('error', () => {
+    callback({ type: 'error', body: 'Server error' });
+  });
+
+  socket.on('disconnect', () => {
+    callback({ type: 'error', body: 'Unable to connect to server' });
+  });
+
+  socket.on('newEvent', (newEvent) => {
+    callback({ type: 'message', body: newEvent });
+  });
+
   socket.on('connect', () => {
-    socket.on('newEvent', (newEvent) => {
-      callback(null, newEvent);
-    });
-    socket.emit('subscribe');
+    callback({ type: 'connection', body: null });
+    socket.emit('play');
   });
 };
 
 export const pause = () => {
-  socket.emit('unsubscribe');
+  socket.emit('pause');
 };
 
-export const resume = () => {
-  socket.emit('subscribe');
+export const play = () => {
+  socket.emit('play');
 };

@@ -8,7 +8,7 @@ import {
 const PageControllers = ({
   page,
   jumpToPage,
-  last,
+  previous,
   next,
   pageCount,
 }) => {
@@ -23,7 +23,7 @@ const PageControllers = ({
             key="left"
             icon="triangle"
             iconAim="left"
-            onClick={last}
+            onClick={previous}
           />
         )
       }

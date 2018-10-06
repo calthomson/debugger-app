@@ -12,7 +12,9 @@
     "start": "npm run build && node src/server/index.js",
     "client": "webpack-dev-server --mode development --devtool inline-source-map --hot",
     "server": "nodemon src/server/index.js",
-    "dev": "concurrently 'docker-compose up > docker.log 2>&1' 'npm run server' 'npm run client'"
+    "dev": "npm run docker && concurrently 'npm run server' 'npm run client'",
+    "docker": "docker-compose up -d",
+    "test": "npm install && jest --verbose --coverage"
   },
   "author": "Caledonia Thomson",
   "license": "ISC",

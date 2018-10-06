@@ -12,20 +12,19 @@ const createServer = (redisClient, port) => {
     redisClient.on('message', (channel, message) => {
       client.emit('newEvent', message);
     });
-    // When a client subscribes, server subscribes to Redis channel
-    client.on('subscribe', () => {
-      redisClient.subscribe('events', (error) => {
-        if (error) throw new Error(error);
-      });
+
+    // When a client plays stream, server subscribes to Redis channel
+    client.on('play', () => {
+      redisClient.subscribe('events', () => {});
     });
-    // When a client unsubscribes, server unsubscribes from Redis channel
-    client.on('unsubscribe', () => {
+
+    // When a client pauses stream, server unsubscribes from Redis channel
+    client.on('pause', () => {
       redisClient.unsubscribe();
     });
   });
 
   io.listen(port);
-  console.log('Listening on port ', port);
 
   return { io, httpServer };
 };

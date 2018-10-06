@@ -1,5 +1,6 @@
 import React, { Component } from 'react';
 import {
+  Alert,
   SearchInput,
   SegmentedControl,
   Table,
@@ -9,11 +10,8 @@ import {
   TextTableCell,
 } from 'evergreen-ui';
 
-import { subscribe, pause, resume } from '../../socket/eventStream';
+import { connect, pause, play } from '../../socket/eventStream';
 import PageControllers from '../PageControllers';
-
-const cache = [];
-const pageSize = 20;
 
 const renderEventRow = event => (
   <TableRow key={event}>
@@ -23,22 +21,31 @@ const renderEventRow = event => (
 
 export default class EventsTable extends Component {
   state = {
-    events: [], pageCount: 0, page: 0, stream: 'live', filter: ''
+    eventsLength: 0, pageCount: 0, page: 0, stream: 'live', filter: '', connected: false,
   };
 
+  events = [];
+
+  PAGE_SIZE = 20;
+
   componentDidMount() {
-    subscribe((err, newEvent) => {
-      cache.unshift(newEvent);
-    });
+    connect((response) => {
+      if ((response.type === 'error')) {
+        this.setState({ connected: false });
+      } else if (response.type === 'connection') {
+        this.setState({ connected: true });
+      } else {
+        this.events.unshift(response.body);
+      }
+    }, 'http://localhost:8000/');
 
     setInterval(() => {
-      const { filter, pageCount, page } = this.state;
-      const events = filter === '' ? cache : cache.filter(event => event.includes(filter));
-      const newPageCount = Math.floor(events.length / pageSize);
+      const { pageCount, page, eventsLength, } = this.state;
+      if (this.events.length === eventsLength) return;
+      const newPageCount = Math.floor(eventsLength / this.PAGE_SIZE);
       this.setState({
-        events,
+        eventsLength: this.events.length,
         pageCount: newPageCount,
-        // If the page count goes down (eg. when a filter is applied) set the current page to 0
         page: newPageCount < pageCount ? 0 : page,
       });
     }, 16);
@@ -46,20 +53,29 @@ export default class EventsTable extends Component {
 
   render() {
     const {
-      page, events, pageCount, stream
+      page, pageCount, stream, connected, filter
     } = this.state;
-    const pageStart = page * pageSize;
-    const pageEnd = pageStart + pageSize;
+    const pageStart = page * this.PAGE_SIZE;
+    const pageEnd = pageStart + this.PAGE_SIZE;
+
+    const filteredEvents = filter === '' ? this.events : this.events.filter(event => event.includes(filter));
 
     return (
       <div>
+        { !connected && (
+          <Alert
+            marginBottom={5}
+            type="warning"
+            title="Disconnected from server"
+          />
+        )}
         <Table style={{ marginBottom: 5 }}>
           <TableHead style={{ padding: 16 }}>
             <SegmentedControl
               width={160}
               options={[{ label: 'Live', value: 'live' }, { label: 'Pause', value: 'pause' }]}
               value={stream}
-              onChange={(value) => { this.setState({ stream: value }); if (value === 'pause') pause(); else resume(); }}
+              onChange={(value) => { this.setState({ stream: value }); if (value === 'pause') pause(); else play(); }}
               style={{ marginRight: 16, height: 40 }}
             />
             <SearchInput
@@ -70,7 +86,7 @@ export default class EventsTable extends Component {
             />
           </TableHead>
           <TableBody>
-            {events.slice(pageStart, pageEnd).map(renderEventRow)}
+            {filteredEvents.slice(pageStart, pageEnd).map(renderEventRow)}
           </TableBody>
         </Table>
         <PageControllers
@@ -79,7 +95,7 @@ export default class EventsTable extends Component {
             const val = parseInt(e.target.value, 10) || 0; // Check that input is valid number
             this.setState({ page: val < 0 || val > pageCount ? page : val }); // Check range
           }}
-          last={() => { this.setState({ page: page - 1 }); }}
+          previous={() => { this.setState({ page: page - 1 }); }}
           next={() => { this.setState({ page: page + 1 }); }}
           pageCount={pageCount}
         />

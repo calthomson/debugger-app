@@ -5,16 +5,18 @@ import createServer from './createServer';
 
 let server;
 let socket;
+let mockRedisServer;
+let mockRedisClient;
 
-describe('createServer', () => {
-  // First, create the server using a mocked Redis server
+describe('server', () => {
+  // Before running tests, create a mock Redis server
   beforeAll(() => {
-    const mockRedisServer = redis.createClient();
-    const mockRedisClient = redis.createClient();
+    mockRedisServer = redis.createClient();
+    mockRedisClient = redis.createClient();
 
     // When the client subscribes, publish a messages to the 'events' channel
     mockRedisClient.on('subscribe', () => {
-      mockRedisServer.publish('events', 'Mock event');
+      mockRedisServer.publish('events', 'An event sent after a subscribe');
     });
 
     server = createServer(mockRedisClient, '');
@@ -48,11 +50,33 @@ describe('createServer', () => {
   });
 
   test('subscribes to a Redis channel and propagates messages from this channel to a client via a socket', (done) => {
-    socket.emit('subscribe');
-
     socket.once('newEvent', (message) => {
-      expect(message).toBe('Mock event');
+      expect(message).toBe('An event sent after a subscribe');
       done();
     });
+
+    socket.emit('play');
+  });
+
+  test('responds to client pausing/playing stream and does not propagate events while paused', (done) => {
+    socket.once('newEvent', (message) => {
+      expect(message).toBe('An event sent after a subscribe');
+
+      mockRedisClient.on('unsubscribe', () => { // When an unsubscribe occurs, send an event
+        // Expect that next event will not be the event that was sent while paused/unsubscribed
+        socket.once('newEvent', (secondMessage) => {
+          expect(secondMessage).toBe('An event sent after a subscribe');
+          done();
+        });
+
+        mockRedisServer.publish('events', 'An event sent while unsubscribed');
+
+        socket.emit('play');
+      });
+
+      socket.emit('pause');
+    });
+
+    socket.emit('play');
   });
 });
