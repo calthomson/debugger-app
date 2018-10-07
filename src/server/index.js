@@ -1,5 +1,8 @@
 const redis = require('redis');
-const createServer = require('./createServer');
+const http = require('http');
+const express = require('express');
+
+const createSocket = require('./createSocket');
 
 const redisClient = redis.createClient({
   retry_strategy: () => {
@@ -8,4 +11,11 @@ const redisClient = redis.createClient({
   }
 });
 
-createServer(redisClient, 8000);
+const app = express();
+app.use(express.static('dist'));
+const httpServer = http.createServer(app);
+
+const io = createSocket(redisClient);
+
+io.listen(httpServer);
+httpServer.listen(8000);

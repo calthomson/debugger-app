@@ -7,7 +7,7 @@ let ioServer;
 let httpServer;
 let httpServerAddr;
 
-describe('eventStream', () => {
+describe('client socket', () => {
   beforeEach(() => {
     httpServer = http.createServer().listen();
     httpServerAddr = httpServer.listen().address();

@@ -1,10 +1,10 @@
 import React from 'react';
 
-import EventsTable from '../EventsTable';
+import EventTable from '../EventTable';
 
 const App = () => (
   <div>
-    <EventsTable />
+    <EventTable />
   </div>
 );
 

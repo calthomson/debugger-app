@@ -6,27 +6,25 @@ import {
   Table,
   TableBody,
   TableHead,
-  TableRow,
-  TextTableCell,
 } from 'evergreen-ui';
 
 import { connect, pause, play } from '../../socket/eventStream';
 import PageControllers from '../PageControllers';
+import EventRow from '../EventRow';
 
 export const PAGE_SIZE = 20;
 
-const renderEventRow = event => (
-  <TableRow key={event}>
-    <TextTableCell>{event}</TextTableCell>
-  </TableRow>
-);
-
-export default class EventsTable extends Component {
+export default class EventTable extends Component {
   state = {
-    eventsLength: 0, pageCount: 0, page: 0, stream: 'live', filter: '', connected: false,
+    page: 0, stream: 'live', filter: '', connected: false,
   };
 
   events = [];
+
+  constructor() {
+    super();
+    this.onAnimationFrame = this.onAnimationFrame.bind(this);
+  }
 
   componentDidMount() {
     connect((response) => {
@@ -36,29 +34,27 @@ export default class EventsTable extends Component {
         this.setState({ connected: true });
       } else {
         this.events.unshift(response.body);
+        if (!this.frameId) {
+          this.frameId = window.requestAnimationFrame(this.onAnimationFrame);
+        }
       }
     }, 'http://localhost:8000/');
+  }
 
-    setInterval(() => {
-      const { pageCount, page, eventsLength, } = this.state;
-      if (this.events.length === eventsLength) return;
-      const newPageCount = Math.floor(this.events.length / PAGE_SIZE);
-      this.setState({
-        eventsLength: this.events.length,
-        pageCount: newPageCount,
-        page: newPageCount < pageCount ? 0 : page,
-      });
-    }, 16);
+  onAnimationFrame() {
+    this.frameId = null;
+    this.forceUpdate();
   }
 
   render() {
     const {
-      page, pageCount, stream, connected, filter
+      page, stream, connected, filter
     } = this.state;
     const pageStart = page * PAGE_SIZE;
     const pageEnd = pageStart + PAGE_SIZE;
 
     const filteredEvents = filter === '' ? this.events : this.events.filter(event => event.includes(filter));
+    const pageCount = Math.floor(filteredEvents.length / PAGE_SIZE);
 
     return (
       <div>
@@ -80,13 +76,16 @@ export default class EventsTable extends Component {
             />
             <SearchInput
               placeholder="Type to search..."
-              onChange={(event) => { this.setState({ filter: event.target.value }); }}
+              onChange={(event) => { this.setState({ filter: event.target.value, page: 0 }); }}
               height={40}
               width="100%"
             />
           </TableHead>
           <TableBody>
-            {filteredEvents.slice(pageStart, pageEnd).map(renderEventRow)}
+            {filteredEvents.slice(pageStart, pageEnd).map((eventString) => {
+              const event = JSON.parse(eventString);
+              return <EventRow event={event} key={event.messageId} />;
+            })}
           </TableBody>
         </Table>
         <PageControllers

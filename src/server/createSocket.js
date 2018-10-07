@@ -1,11 +1,7 @@
-const http = require('http');
-const express = require('express');
 const socketIo = require('socket.io');
 
-const createServer = (redisClient, port) => {
-  const app = express();
-  const httpServer = http.createServer(app);
-  const io = socketIo(httpServer);
+const createSocket = (redisClient) => {
+  const io = socketIo();
 
   io.on('connection', (client) => {
     // When a new message is received from Redis, emit it to the client
@@ -24,9 +20,7 @@ const createServer = (redisClient, port) => {
     });
   });
 
-  io.listen(port);
-
-  return { io, httpServer };
+  return io;
 };
 
-module.exports = createServer;
+module.exports = createSocket;

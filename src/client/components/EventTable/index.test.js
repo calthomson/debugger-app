@@ -10,7 +10,7 @@ import {
 } from 'evergreen-ui';
 
 import { connect, pause, play } from '../../socket/eventStream';
-import EventsTable, { PAGE_SIZE } from '.';
+import EventTable, { PAGE_SIZE } from '.';
 
 Enzyme.configure({ adapter: new Adapter() });
 
@@ -18,13 +18,31 @@ jest.mock('../../socket/eventStream');
 
 const printMockEvents = (callback, quantity) => {
   for (let i = 0; i < quantity; i += 1) { // TODO make a function
-    callback({ type: 'message', body: `Mock event ${i}` });
+    callback({ type: 'message', body: `{"type":"track","messageId":"${i}","event":"mock event"}` });
+    // callback({ type: 'message', body: `{"type":"identify","messageId":"${i + 1}","traits":{"name":"Ms. Mock Event"}}` });
+    // callback({ type: 'message', body: `{"type":"page","messageId":"${i + 2}","properties":{"path":"/mockEvent"}}` });
   }
 };
 
-describe('EventsTable component', () => {
+// {"type":"page",
+// "messageId":"ajs-5aed9b21-4add-41d2-8ada-83f277da3eb8",
+// "context":{"ip":"105.99.134.58",
+// "library":{"name":"analytics.js",
+// "version":"3.0.0"}},
+// "integrations":{},
+// "receivedAt":"2018-10-05T07:28:49.130Z",
+// "sentAt":1538724524130,
+// "userId":"22566a3c-81c0-45b9-8c57-35b0dbd44d9b",
+// "anonymousId":"9f8bd50f-f08a-46e2-afa5-f0ccd29c4770",
+// "properties":{"path":"/",
+// "referrer":"",
+// "search":"",
+// "title":"nostrum aut laudantium",
+// "url":"http://freddie.com"}}
+
+describe('EventTable component', () => {
   it('renders a table component', () => {
-    const wrapper = shallow(<EventsTable />);
+    const wrapper = shallow(<EventTable />);
 
     expect(wrapper.find(Table)).toHaveLength(1);
   });
@@ -33,7 +51,7 @@ describe('EventsTable component', () => {
     it('renders alert when server sends an error', () => {
       connect.mockImplementationOnce(callback => callback({ type: 'error', body: null }));
 
-      const wrapper = mount(<EventsTable />);
+      const wrapper = mount(<EventTable />);
 
       expect(wrapper.find(Alert)).toHaveLength(1);
     });
@@ -41,7 +59,7 @@ describe('EventsTable component', () => {
     it('removes alert when server connects', () => {
       connect.mockImplementationOnce(callback => callback({ type: 'connection', body: null }));
 
-      const wrapper = mount(<EventsTable />);
+      const wrapper = mount(<EventTable />);
 
       expect(wrapper.find(Alert)).toHaveLength(0);
     });
@@ -51,7 +69,7 @@ describe('EventsTable component', () => {
     it('renders a row component for each event when page count < PAGE_SIZE', (done) => {
       connect.mockImplementationOnce(callback => printMockEvents(callback, 10));
 
-      const wrapper = mount(<EventsTable />);
+      const wrapper = mount(<EventTable />);
 
       setTimeout(() => {
         wrapper.update();
@@ -63,7 +81,7 @@ describe('EventsTable component', () => {
     it('renders PAGE_SIZE rows when page count > PAGE_SIZE', (done) => {
       connect.mockImplementationOnce(callback => printMockEvents(callback, PAGE_SIZE + 1));
 
-      const wrapper = mount(<EventsTable />);
+      const wrapper = mount(<EventTable />);
 
       setTimeout(() => {
         wrapper.update();
@@ -77,7 +95,7 @@ describe('EventsTable component', () => {
     it('live button plays stream', () => {
       play.mockImplementationOnce(() => {});
 
-      const wrapper = mount(<EventsTable />);
+      const wrapper = mount(<EventTable />);
 
       const controlButtons = wrapper.find(SegmentedControl).find('input');
 
@@ -91,7 +109,7 @@ describe('EventsTable component', () => {
     it('pause button pauses stream', () => {
       pause.mockImplementationOnce(() => {});
 
-      const wrapper = mount(<EventsTable />);
+      const wrapper = mount(<EventTable />);
 
       const controlButtons = wrapper.find(SegmentedControl).find('input');
 
@@ -104,45 +122,70 @@ describe('EventsTable component', () => {
   });
 
   describe('filter', () => {
-    let wrapper;
-
-    beforeAll(() => {
+    it('shows correct results when filter is applied & removed', (done) => {
       connect.mockImplementationOnce((callback) => {
-        callback({ type: 'message', body: 'I love broccoli' });
-        callback({ type: 'message', body: 'Ice cream is awesome' });
-        callback({ type: 'message', body: 'I love ice cream' });
+        callback({ type: 'message', body: '{"type":"track","messageId":"1","event":"I scream"}' });
+        callback({ type: 'message', body: '{"type":"track","messageId":"2","event":"Ice cream"}' });
       });
 
-      wrapper = mount(<EventsTable />);
+      const wrapper = mount(<EventTable />);
+
+      setTimeout(() => {
+        wrapper.find(SearchInput).find('input').simulate('change', { target: { value: 'Ice cream' } });
+
+        wrapper.update();
+        expect(wrapper.find(TableRow)).toHaveLength(1);
+
+        wrapper.find(SearchInput).find('input').simulate('change', { target: { value: '' } });
+
+        wrapper.update();
+        expect(wrapper.find(TableRow)).toHaveLength(2);
+
+        done();
+      }, 100);
     });
 
-    it('removes non-matching results from view when filter is applied', () => {
-      wrapper.find(SearchInput).find('input').simulate('change', { target: { value: 'ice cream' } });
+    it('reverts to first page when filter causes page count to become less than current page', (done) => {
+      connect.mockImplementationOnce(callback => printMockEvents(callback, 41));
 
-      wrapper.update();
-      expect(wrapper.find(TableRow)).toHaveLength(1);
-    });
+      const wrapper = mount(<EventTable />);
 
-    it('restores all results from view when filter is removed', () => {
-      wrapper.find(SearchInput).find('input').simulate('change', { target: { value: '' } });
+      setTimeout(() => {
+        wrapper.update();
 
-      wrapper.update();
-      expect(wrapper.find(TableRow)).toHaveLength(3);
+        expect(wrapper.find(TableRow)).toHaveLength(PAGE_SIZE);
+        wrapper.find('[data-testid="jump-to-page-input"]').hostNodes().simulate('change', { target: { value: '2' } });
+
+        expect(wrapper.state().page).toBe(2);
+
+        wrapper.find(SearchInput).find('input').simulate('change', { target: { value: '2' } });
+
+        wrapper.update();
+
+        expect(wrapper.state().page).toBe(0);
+
+        done();
+      }, 100);
     });
   });
 
   describe('page control', () => {
     let wrapper;
 
+
     const verifyPageContents = (tableRows, page) => tableRows.reduce(
-      (acc, row, i) => row.html().includes(wrapper.instance().events[i + (PAGE_SIZE * page)]),
+      (acc, row, i) => {
+        const expectedEventString = wrapper.instance().events[i + (PAGE_SIZE * page)];
+        const eventId = JSON.parse(expectedEventString).messageId;
+        return row.html().includes(eventId);
+      },
       false
     );
 
     beforeEach((done) => {
       connect.mockImplementationOnce(callback => printMockEvents(callback, PAGE_SIZE + 2));
 
-      wrapper = mount(<EventsTable />);
+      wrapper = mount(<EventTable />);
 
       setTimeout(() => {
         wrapper.update();
