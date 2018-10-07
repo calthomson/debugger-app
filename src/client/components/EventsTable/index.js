@@ -13,6 +13,8 @@ import {
 import { connect, pause, play } from '../../socket/eventStream';
 import PageControllers from '../PageControllers';
 
+export const PAGE_SIZE = 20;
+
 const renderEventRow = event => (
   <TableRow key={event}>
     <TextTableCell>{event}</TextTableCell>
@@ -25,8 +27,6 @@ export default class EventsTable extends Component {
   };
 
   events = [];
-
-  PAGE_SIZE = 20;
 
   componentDidMount() {
     connect((response) => {
@@ -42,7 +42,7 @@ export default class EventsTable extends Component {
     setInterval(() => {
       const { pageCount, page, eventsLength, } = this.state;
       if (this.events.length === eventsLength) return;
-      const newPageCount = Math.floor(eventsLength / this.PAGE_SIZE);
+      const newPageCount = Math.floor(this.events.length / PAGE_SIZE);
       this.setState({
         eventsLength: this.events.length,
         pageCount: newPageCount,
@@ -55,8 +55,8 @@ export default class EventsTable extends Component {
     const {
       page, pageCount, stream, connected, filter
     } = this.state;
-    const pageStart = page * this.PAGE_SIZE;
-    const pageEnd = pageStart + this.PAGE_SIZE;
+    const pageStart = page * PAGE_SIZE;
+    const pageEnd = pageStart + PAGE_SIZE;
 
     const filteredEvents = filter === '' ? this.events : this.events.filter(event => event.includes(filter));
 
@@ -73,7 +73,7 @@ export default class EventsTable extends Component {
           <TableHead style={{ padding: 16 }}>
             <SegmentedControl
               width={160}
-              options={[{ label: 'Live', value: 'live' }, { label: 'Pause', value: 'pause' }]}
+              options={[{ label: 'Live', value: 'live', 'data-testid': 'live' }, { label: 'Pause', value: 'pause' }]}
               value={stream}
               onChange={(value) => { this.setState({ stream: value }); if (value === 'pause') pause(); else play(); }}
               style={{ marginRight: 16, height: 40 }}

@@ -18,7 +18,7 @@ export const connect = (callback, socketUrl) => {
   });
 
   socket.on('connect', () => {
-    callback({ type: 'connection', body: null });
+    callback({ type: 'connection' });
     socket.emit('play');
   });
 };
