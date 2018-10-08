@@ -2,9 +2,9 @@
 An application that consumes events from a Redis service, and displays them in a React UI.
 
 ## 🏗️. Architecture overview
-This application is built with a Node.js server. This server connects to and receives messages from a Redis channel via a Node.js Redis client. The server then propagates these messages to a connected client via a Socket.IO socket.
+This application is built with a Node.js server, using the Express framework. This server connects to and receives messages from a Redis channel via a Node.js Redis client. The server then propagates these messages to a connected client via a Socket.IO socket.
 
-The client is built with React, leveraging the [Evergreen React UI Framework](https://github.com/segmentio/evergreen/blob/master/README.md), created by [Segment](https://segment.com/). It connects to the server via a socket and displays the events it receives in the UI. It emits pause and resume messages to the server to control the stream. It filters existing and incoming events given a search term, without requesting anything from the server.
+The client is built with React, with the [Evergreen React UI Framework](https://github.com/segmentio/evergreen/blob/master/README.md), created by [Segment](https://segment.com/). It connects to the server via a socket and displays the events it receives in the UI. It emits pause and resume messages to the server to control the stream. It filters existing and incoming events given a search term, without requesting anything from the server.
 
 #### Scaling
 In order to scale the application to handle multiple thousands of events per second, the UI does not refresh every time an event is received. Instead, the incoming events are stored in a cache array and the UI is refreshed in batches.
@@ -23,7 +23,7 @@ Installs dependencies and runs tests.
 
 ### `make run`
 
-Builds and starts the application, in production mode. Also starts the included docker image.
+Builds and starts the application, in production mode. Also starts the included docker image. See the running application at [http://localhost:8000/](http://localhost:8000/).
 
 ### `npm test`
 Runs tests.
@@ -33,6 +33,9 @@ Builds and starts the application, in production mode, without starting the dock
 
 ### `npm dev`
 Starts the application, in production mode, without starting the docker container.
+
+##### Example of the application running:
+![Example GIF](https://github.com/calthomson/debugger-app/blob/master/example.gif)
 
 ## ⏳  Time spent on each task
 - Initial project set-up (eslint, babel, webpack, prod env, dev env) - **1 hour**
@@ -66,3 +69,11 @@ Total: **22 hours**
 
 ### Metrics
 We could monitor the server in production to see how many events it receives from Redis, log when Redis is unavailable, when clients connect, and when they disconnect. On the client side we could monitor how the application is being used, browser latency, and any client side errors. These metrics would help us to better understand how the application is being used and inform us about abnormal behavior.
+
+### Deployment
+This project can currently be run in 'production' mode. In this mode the client side application code is compiled by Babel into a version of Javascript that can be run in the browser. All we need to do to is start the server and point it to this compiled Javascript bundle. To deploy this application we could host our Node.js server and the compiled client side application in the cloud with a platform like Digital Ocean or AWS.
+
+In production we could set NODE_ENV=production, which would reduce error message verbosity and improve performance through caching of view templates.
+
+### Scaling
+In order to scale the backend service of this application to handle more clients, we could run multiple instances of the server, and distribute client connections among these instances. The cloud platforms mentioned above can provide horizontal scaling like this.
