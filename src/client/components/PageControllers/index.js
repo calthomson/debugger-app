@@ -12,7 +12,7 @@ const PageControllers = ({
   next,
   pageCount,
 }) => {
-  const morePagesLeft = page > 0;
+  const morePagesLeft = page > 1;
   const morePagesRight = page < pageCount;
 
   return (
@@ -34,6 +34,7 @@ const PageControllers = ({
           height={32}
           width={80}
           onChange={jumpToPage}
+          onFocus={event => event.target.select()}
           value={page}
         />
         <Label

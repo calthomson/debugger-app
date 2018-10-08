@@ -12,11 +12,11 @@ import { connect, pause, play } from '../../socket/eventStream';
 import PageControllers from '../PageControllers';
 import EventRow from '../EventRow';
 
-export const PAGE_SIZE = 20;
+export const PAGE_SIZE = 13;
 
 export default class EventTable extends Component {
   state = {
-    page: 0, stream: 'live', filter: '', connected: false,
+    page: 1, stream: 'live', filter: '', connected: false,
   };
 
   events = [];
@@ -24,6 +24,9 @@ export default class EventTable extends Component {
   constructor() {
     super();
     this.onAnimationFrame = this.onAnimationFrame.bind(this);
+    this.handleSearchInput = this.handleSearchInput.bind(this);
+    this.getFilteredEvents = this.getFilteredEvents.bind(this);
+    this.filterEvent = this.filterEvent.bind(this);
   }
 
   componentDidMount() {
@@ -33,7 +36,7 @@ export default class EventTable extends Component {
       } else if (response.type === 'connection') {
         this.setState({ connected: true });
       } else {
-        this.events.unshift(response.body);
+        this.events.unshift(JSON.parse(response.body));
         if (!this.frameId) {
           this.frameId = window.requestAnimationFrame(this.onAnimationFrame);
         }
@@ -46,15 +49,47 @@ export default class EventTable extends Component {
     this.forceUpdate();
   }
 
+  getFilteredEvents() {
+    const { filter } = this.state;
+    if (filter === '') {
+      return this.events;
+    }
+
+    return this.events.filter(this.filterEvent);
+  }
+
+  filterEvent(event) {
+    const { filter } = this.state;
+    const { type } = event;
+    const eventData = [type];
+
+    if (type === 'page') {
+      eventData.push(event.properties.path);
+    } else if (type === 'identify') {
+      eventData.push(event.traits.name);
+    } else {
+      eventData.push(event.event);
+    }
+
+    return eventData.join(' ').toLowerCase().includes(filter);
+  }
+
+  handleSearchInput(events) {
+    this.setState({ filter: events.target.value.toLowerCase(), page: 1 });
+  }
+
   render() {
     const {
-      page, stream, connected, filter
+      page, stream, connected
     } = this.state;
-    const pageStart = page * PAGE_SIZE;
+
+    const pageStart = (page - 1) * PAGE_SIZE;
+
     const pageEnd = pageStart + PAGE_SIZE;
 
-    const filteredEvents = filter === '' ? this.events : this.events.filter(event => event.includes(filter));
-    const pageCount = Math.floor(filteredEvents.length / PAGE_SIZE);
+    const filteredEvents = this.getFilteredEvents();
+
+    const pageCount = 1 + Math.floor(filteredEvents.length / PAGE_SIZE);
 
     return (
       <div>
@@ -76,23 +111,22 @@ export default class EventTable extends Component {
             />
             <SearchInput
               placeholder="Type to search..."
-              onChange={(event) => { this.setState({ filter: event.target.value, page: 0 }); }}
+              onChange={this.handleSearchInput}
               height={40}
               width="100%"
             />
           </TableHead>
           <TableBody>
-            {filteredEvents.slice(pageStart, pageEnd).map((eventString) => {
-              const event = JSON.parse(eventString);
-              return <EventRow event={event} key={event.messageId} />;
-            })}
+            {filteredEvents
+              .slice(pageStart, pageEnd)
+              .map(event => <EventRow event={event} key={event.messageId} />)}
           </TableBody>
         </Table>
         <PageControllers
           page={page}
           jumpToPage={(e) => {
-            const val = parseInt(e.target.value, 10) || 0; // Check that input is valid number
-            this.setState({ page: val < 0 || val > pageCount ? page : val }); // Check range
+            const val = parseInt(e.target.value, 10) || 1; // Check that input is valid number
+            this.setState({ page: val < 1 || val > pageCount ? page : val }); // Check range
           }}
           previous={() => { this.setState({ page: page - 1 }); }}
           next={() => { this.setState({ page: page + 1 }); }}

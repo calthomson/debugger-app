@@ -17,28 +17,10 @@ Enzyme.configure({ adapter: new Adapter() });
 jest.mock('../../socket/eventStream');
 
 const printMockEvents = (callback, quantity) => {
-  for (let i = 0; i < quantity; i += 1) { // TODO make a function
+  for (let i = 0; i < quantity; i += 1) {
     callback({ type: 'message', body: `{"type":"track","messageId":"${i}","event":"mock event"}` });
-    // callback({ type: 'message', body: `{"type":"identify","messageId":"${i + 1}","traits":{"name":"Ms. Mock Event"}}` });
-    // callback({ type: 'message', body: `{"type":"page","messageId":"${i + 2}","properties":{"path":"/mockEvent"}}` });
   }
 };
-
-// {"type":"page",
-// "messageId":"ajs-5aed9b21-4add-41d2-8ada-83f277da3eb8",
-// "context":{"ip":"105.99.134.58",
-// "library":{"name":"analytics.js",
-// "version":"3.0.0"}},
-// "integrations":{},
-// "receivedAt":"2018-10-05T07:28:49.130Z",
-// "sentAt":1538724524130,
-// "userId":"22566a3c-81c0-45b9-8c57-35b0dbd44d9b",
-// "anonymousId":"9f8bd50f-f08a-46e2-afa5-f0ccd29c4770",
-// "properties":{"path":"/",
-// "referrer":"",
-// "search":"",
-// "title":"nostrum aut laudantium",
-// "url":"http://freddie.com"}}
 
 describe('EventTable component', () => {
   it('renders a table component', () => {
@@ -125,7 +107,8 @@ describe('EventTable component', () => {
     it('shows correct results when filter is applied & removed', (done) => {
       connect.mockImplementationOnce((callback) => {
         callback({ type: 'message', body: '{"type":"track","messageId":"1","event":"I scream"}' });
-        callback({ type: 'message', body: '{"type":"track","messageId":"2","event":"Ice cream"}' });
+        callback({ type: 'message', body: '{"type":"identify","messageId":"2","traits":{"name":"Ice cream"}}' });
+        callback({ type: 'message', body: '{"type":"page","messageId":"3","properties":{"path":"/iceCream"}}' });
       });
 
       const wrapper = mount(<EventTable />);
@@ -139,7 +122,7 @@ describe('EventTable component', () => {
         wrapper.find(SearchInput).find('input').simulate('change', { target: { value: '' } });
 
         wrapper.update();
-        expect(wrapper.find(TableRow)).toHaveLength(2);
+        expect(wrapper.find(TableRow)).toHaveLength(3);
 
         done();
       }, 100);
@@ -162,7 +145,7 @@ describe('EventTable component', () => {
 
         wrapper.update();
 
-        expect(wrapper.state().page).toBe(0);
+        expect(wrapper.state().page).toBe(1);
 
         done();
       }, 100);
@@ -175,9 +158,8 @@ describe('EventTable component', () => {
 
     const verifyPageContents = (tableRows, page) => tableRows.reduce(
       (acc, row, i) => {
-        const expectedEventString = wrapper.instance().events[i + (PAGE_SIZE * page)];
-        const eventId = JSON.parse(expectedEventString).messageId;
-        return row.html().includes(eventId);
+        const expectedEvent = wrapper.instance().events[i + (PAGE_SIZE * (page - 1))];
+        return row.html().includes(expectedEvent.messageId);
       },
       false
     );
@@ -194,7 +176,7 @@ describe('EventTable component', () => {
     });
 
     it('goes to the next or previous page when \'next\' or \'previous\' buttons are clicked', () => {
-      let correctRows = verifyPageContents(wrapper.find(TableRow), 0);
+      let correctRows = verifyPageContents(wrapper.find(TableRow), 1);
 
       expect(correctRows).toBe(true);
 
@@ -202,7 +184,7 @@ describe('EventTable component', () => {
 
       wrapper.update();
 
-      correctRows = verifyPageContents(wrapper.find(TableRow), 1);
+      correctRows = verifyPageContents(wrapper.find(TableRow), 2);
 
       expect(correctRows).toBe(true);
 
@@ -210,17 +192,19 @@ describe('EventTable component', () => {
 
       wrapper.update();
 
-      correctRows = verifyPageContents(wrapper.find(TableRow), 0);
+      correctRows = verifyPageContents(wrapper.find(TableRow), 1);
 
       expect(correctRows).toBe(true);
     });
 
     it('jumps to the target page when the \'current page\' input is changed', () => {
-      wrapper.find('[data-testid="jump-to-page-input"]').hostNodes().simulate('change', { target: { value: '1' } });
+      const jumpToPageInput = wrapper.find('[data-testid="jump-to-page-input"]');
+      jumpToPageInput.hostNodes().simulate('focus');
+      jumpToPageInput.hostNodes().simulate('change', { target: { value: '2' } });
 
       wrapper.update();
 
-      const correctRows = verifyPageContents(wrapper.find(TableRow), 1);
+      const correctRows = verifyPageContents(wrapper.find(TableRow), 2);
 
       expect(correctRows).toBe(true);
     });
@@ -229,20 +213,20 @@ describe('EventTable component', () => {
       const jumpInput = wrapper.find('[data-testid="jump-to-page-input"]').hostNodes();
       jumpInput.simulate('change', { target: { value: 'a' } });
 
-      expect(jumpInput.props().value).toBe(0);
+      expect(jumpInput.props().value).toBe(1);
 
       jumpInput.simulate('change', { target: { value: '-10' } });
 
-      expect(jumpInput.props().value).toBe(0);
+      expect(jumpInput.props().value).toBe(1);
 
       jumpInput.simulate('change', { target: { value: wrapper.state().pageCount } });
 
-      expect(jumpInput.props().value).toBe(0);
+      expect(jumpInput.props().value).toBe(1);
     });
 
     it('displays the total pages', () => {
       const totalPagesLabel = wrapper.find('[data-testid="total-pages-label"]').hostNodes();
-      expect(totalPagesLabel.props().children).toBe('of 1');
+      expect(totalPagesLabel.props().children).toBe('of 2');
     });
   });
 });
