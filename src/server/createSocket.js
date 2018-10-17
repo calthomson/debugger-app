@@ -3,6 +3,12 @@ const socketIo = require('socket.io');
 const createSocket = (redisClient) => {
   const io = socketIo();
 
+  // redisClient.on('message', (channel, message) => {
+  //   // Store messages received from Redis
+  //   console.log('message;', message);
+  //   // eventFrequency[];
+  // });
+
   io.on('connection', (client) => {
     // When a new message is received from Redis, emit it to the client
     redisClient.on('message', (channel, message) => {

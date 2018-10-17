@@ -24,7 +24,7 @@ const EventRow = ({ event }) => {
   const date = new Date(event.sentAt);
 
   const sentAt = date.toLocaleString('en-US', { hour12: false }).replace(',', '');
-  
+
   return (
     <TableRow key={event.messageId}>
       <TextTableCell borderRight={null} height={56} style={iconCellStyles}>
